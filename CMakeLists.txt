@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.16.3)
 project(cpp_InternetRelayChat)
 
 set(CMAKE_CXX_STANDARD 98)
@@ -15,8 +15,11 @@ add_executable(ft_irca
         src/Client.hpp
 
 
-        src/commandPath/ACommand.cpp
-        src/commandPath/ACommand.hpp
+        src/commandPath/Command.cpp
+        src/commandPath/Command.hpp
+
+        src/commandPath/Invoker.cpp
+        src/commandPath/Invoker.hpp
 
         src/main.cpp
 

@@ -42,5 +42,4 @@ public:
 	sockaddr_in &getAddress();
 	socklen_t getLen();
 
-
 };

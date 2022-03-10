@@ -6,6 +6,7 @@ Server::Server(int port, std::string pass) : port(port), password(pass) {
 	std::cout << "ip = " << ip << std::endl;
 	std::cout << "port = " << port << std::endl;
 	std::cout << "pass = " << pass << std::endl;
+	_serverName = ip;
 }
 
 //Server::Server(const Server &ref) {
@@ -73,11 +74,8 @@ void Server::go(Socket &sock) {
 	sock.sockLen = sizeof(sock.getAddress());
 
 
+	_Invoker = new Invoker(this);
 
-	//fjvnsdklcdfn
-
-
-	
 	int sock_fd = socket(PF_INET, SOCK_STREAM, 0);
 	if (sock_fd == -1) {
 		std::cerr << "Error: Socket failed!" << std::endl;
@@ -109,8 +107,8 @@ void Server::go(Socket &sock) {
 			poll_fd.fd = client_fd;
 			poll_fd.events = POLLIN;
 			poll_fd.revents = 0;
-			client_fds.push_back(poll_fd);
-			members.push_back(new Client(client_fd,SERVER_NAME));
+			_pollfds.push_back(poll_fd);
+//			members.push_back(new Client(client_fd,SERVER_NAME));
 		}
 	}
 }

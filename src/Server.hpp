@@ -12,9 +12,15 @@ private:
 	std::string      password;
 //	char             *ip;
 	std::string      ip;
-	std::vector<struct pollfd>	client_fds;
+	std::string      _serverName;
+//	std::vector<struct pollfd>	client_fds;
 
-	MessageHandler *_commandHandler;
+	std::vector<pollfd>		_pollfds;
+	std::vector<User *>		_users;
+	std::vector<Channel *>	_channels;
+
+	Invoker					*_Invoker;
+//	MessageHandler *_commandHandler;
 
 public:
 	Server(int port, std::string pass);
