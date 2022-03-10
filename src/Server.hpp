@@ -14,6 +14,8 @@ private:
 	std::string      ip;
 	std::vector<struct pollfd>	client_fds;
 
+	MessageHandler *_commandHandler;
+
 public:
 	Server(int port, std::string pass);
 //	Server(const Server &ref);

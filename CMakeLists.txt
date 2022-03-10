@@ -11,8 +11,12 @@ add_executable(ft_irca
         src/Server.cpp
         src/Server.hpp
 
-        src/Challenge.cpp
-        src/Challenge.hpp
+        src/Client.cpp
+        src/Client.hpp
+
+
+        src/commandPath/ACommand.cpp
+        src/commandPath/ACommand.hpp
 
         src/main.cpp
 
