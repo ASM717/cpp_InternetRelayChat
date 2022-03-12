@@ -11,15 +11,8 @@ add_executable(ft_irca
         src/Server.cpp
         src/Server.hpp
 
-        src/Client.cpp
-        src/Client.hpp
-
-
         src/commandPath/Command.cpp
         src/commandPath/Command.hpp
-
-        src/commandPath/Invoker.cpp
-        src/commandPath/Invoker.hpp
 
         src/main.cpp
 
