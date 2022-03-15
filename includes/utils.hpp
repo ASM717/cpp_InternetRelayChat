@@ -1,37 +1,36 @@
 #ifndef FT_IRC_UTILS_HPP
 #define FT_IRC_UTILS_HPP
 
-# include <iostream>
-# include <map>
-# include <cerrno>
-# include <vector>
-# include <set>
-# include <queue>
-# include <unistd.h>
-# include <cstdlib>
-# include <algorithm>
-# include <sys/socket.h>
-# include <fcntl.h>
-# include <ctime>
-# include <sys/types.h>
-# include <netinet/in.h>
-# include <arpa/inet.h>
-# include <sys/poll.h>
-# include <sys/event.h>
-# include <csignal>
-# include <sstream>
-# include "fstream"
-# include "Chat.hpp"
-# include "Client.hpp"
-# include "Message.hpp"
-# include "History.hpp"
-# include "UserInfo.hpp"
-# include "Hash.hpp"
+#include <iostream>
+#include <map>
+#include <cerrno>
+#include <vector>
+#include <set>
+#include <queue>
+#include <unistd.h>
+#include <cstdlib>
+#include <algorithm>
+#include <sys/socket.h>
+#include <fcntl.h>
+#include <ctime>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/poll.h>
+#include <sys/event.h>
+#include <csignal>
+#include <sstream>
+#include "fstream"
+#include "Chat.hpp"
+#include "Client.hpp"
+#include "Message.hpp"
+#include "History.hpp"
+#include "UserInfo.hpp"
 
 # define RED		"\033[31m"
 # define RESET	"\033[0m"
 
-# define SERVER_NAME "ircserv"
+#define SERVER_NAME "ircserv"
 
 class Message;
 

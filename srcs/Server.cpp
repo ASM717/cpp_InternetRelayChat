@@ -1,10 +1,13 @@
-#include "Server.hpp"
+#include "../includes/Server.hpp"
 
 bool Server::boolWork;
 
 Server::Server(int Port, std::string Password): m_port(Port), m_pass(Password), m_timeout(1)
 {
+	std::cout << "IRCserver is started at m_port " << m_port << std::endl;
 	init_cmds();
+	std::string line = "Hello man, you are connect";
+	motd.push_back(line);
 }
 
 Server::~Server()
@@ -86,29 +89,6 @@ int Server::user_cmd(const Message &msg, Client &member)
 	return connect_member(member);
 }
 
-//int Server::oper_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() < 2)
-//		send_error(member, 461, msg.get_command());
-//	else if (m_mapCmd.size() == 0)
-//		send_error(member, 491);
-//	else {
-//		try {
-//			std::string	pass = operators.at(msg.get_params()[0]);
-//			if (hash::hash(msg.get_params()[1]) == pass) {
-//				member.set_flag(IRCOPERATOR);
-//				return send_reply(SERVER_NAME, member, 381);
-//			}
-//		}
-//		catch(const std::exception& e)
-//		{
-//
-//		}
-//		send_error(member, 464);
-//	}
-//	return 0;
-//}
-
 int Server::quit_cmd(const Message &msg, Client &member)
 {
 	if (msg.get_params().size() > 0)
@@ -147,198 +127,27 @@ int Server::privmsg_cmd(const Message &msg, Client &member)
 	for (std::set<std::string>::iterator it = uniq.begin(); it != uniq.end(); ++it) {
 		if ((*it)[0] == '#' || (*it)[0] == '&') {
 			Chat *receiver_chat = chats[*it];
-			if (receiver_chat->get_flags() & MODERATED && (!receiver_chat->is_admin(member) && !receiver_chat->is_speaker(member)))
+			if (receiver_chat->get_flags() & MODERATED && (!receiver_chat->is_admin(member)
+				&& !receiver_chat->is_speaker(member)))
 				send_error(member, 404, *it);
 			else
-				receiver_chat->send_message(msg.get_command() + " " + *it + " :" + msg.get_params()[1] + "\n", member);
+				receiver_chat->send_message(msg.get_command() + " " + *it + " :"
+				+ msg.get_params()[1] + "\n", member);
 		} else {
 			if (msg.get_command() == "PRIVMSG" && (get_member(*it)->get_flags() & AWAY))
 				send_reply(SERVER_NAME, member, 301, *it, get_member(*it)->get_exit_msg());
 			if (msg.get_command() != "NOTICE" || (get_member(*it)->get_flags() & RECEIVENOTICE))
-				get_member(*it)->send_message(":" + member.get_prefix() + " " + msg.get_command() + " " + *it + " :" + msg.get_params()[1] + "\n");
+				get_member(*it)->send_message(":" + member.get_prefix() + " "
+				+ msg.get_command() + " " + *it + " :" + msg.get_params()[1] + "\n");
 		}
 	}
 	return 0;
 }
 
-//int Server::away_cmd(const Message &msg, Client &member) {
-//	if (msg.get_params().size() == 0) {
-//		member.delete_flag(AWAY);
-//		send_reply(SERVER_NAME, member, 305);
-//	} else {
-//		member.set_flag(AWAY);
-//		member.set_exit_msg(msg.get_params()[0]);
-//		send_reply(SERVER_NAME, member, 306);
-//	}
-//	return 0;
-//}
-
 int Server::notice_cmd(const Message &msg, Client &member) {
 	privmsg_cmd(msg, member);
 	return 0;
 }
-
-//int Server::who_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() == 0)
-//		return (send_error(member, 461, msg.get_command()));
-//
-//	for (size_t i = 0; i < m_users.size(); ++i) {
-//		if (is_equal_to_regex(msg.get_params()[0], m_users[i]->get_nick()) && !(m_users[i]->get_flags() & INVISIBLE)) {
-//			std::string chat_name = "*";
-//			std::string userStatus = "";
-//			const std::vector<const Chat*> member_chats = m_users[i]->get_chats();
-//
-//			for (int j = member_chats.size() - 1; j >= 0; --j) {
-//				if ((!(member_chats[j]->get_flags() & SECRET) && !(member_chats[j]->get_flags() & PRIVATE)) \
-// 					|| (member_chats[j]->is_exist_member(member.get_nick()))) {
-//					chat_name = member_chats[j]->get_name();
-//					if (member_chats[j]->is_admin(*(m_users[i])))
-//						userStatus = "@";
-//					else if (member_chats[j]->is_speaker(*(m_users[i])))
-//						userStatus = "+";
-//					break;
-//				}
-//			}
-//
-//			if (msg.get_params().size() == 1  || msg.get_params()[1] != "o" || (msg.get_params()[1] == "o" && (m_users[i]->get_flags() & IRCOPERATOR)))
-//				send_reply(SERVER_NAME, member, 352, chat_name, m_users[i]->get_username(), m_users[i]->get_host(), \
-//							SERVER_NAME, m_users[i]->get_nick(), "H" + userStatus, "0");
-//		}
-//	}
-//	return (send_reply(SERVER_NAME, member, 315, member.get_nick()));
-//}
-
-//int Server::whois_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() == 0)
-//		return (send_error(member, 431));
-//
-//	bool is_nick = false;
-//	for (size_t i = 0; i < m_users.size(); ++i) {
-//		if (is_equal_to_regex(msg.get_params()[0], m_users[i]->get_nick()) && !(m_users[i]->get_flags() &
-//																				IRCOPERATOR)) {
-//			send_reply(SERVER_NAME, member, 311, m_users[i]->get_nick(), \
-//			m_users[i]->get_username(), m_users[i]->get_host());
-//
-//			const std::vector<const Chat*> member_chats = m_users[i]->get_chats();
-//			std::string	chats_list;
-//			for (size_t j = 0; j < member_chats.size(); ++j) {
-//				if ((!(member_chats[j]->get_flags() & SECRET) && !(member_chats[j]->get_flags() & PRIVATE)) \
-//					|| (member_chats[j]->is_exist_member(member.get_nick()))) {
-//					if (j != 0)
-//						chats_list += " ";
-//					if (member_chats[j]->is_admin(*(m_users[i])))
-//						chats_list += "@'";
-//					else if (member_chats[j]->is_speaker(*(m_users[i])))
-//						chats_list += "+";
-//					chats_list += member_chats[j]->get_name();
-//				}
-//			}
-//			send_reply(SERVER_NAME, member, 319, m_users[i]->get_nick(), chats_list);
-//			send_reply(SERVER_NAME, member, 312, m_users[i]->get_nick(), SERVER_NAME, info);
-//			if (m_users[i]->get_flags() & AWAY)
-//				send_reply(SERVER_NAME, member, 301, m_users[i]->get_nick(), m_users[i]->get_exit_msg());
-//			if (m_users[i]->get_flags() & IRCOPERATOR)
-//				send_reply(SERVER_NAME, member, 313, m_users[i]->get_nick());
-//			std::stringstream	onServer, regTime;
-//			onServer << (time(0) - m_users[i]->get_registration_time());
-//			regTime << m_users[i]->get_registration_time();
-//			send_reply(SERVER_NAME, member, 317, m_users[i]->get_nick(), onServer.str(), regTime.str());
-//			is_nick = true;
-//		}
-//	}
-//	if (!is_nick)
-//		send_error(member, 401, msg.get_params()[0]);
-//	return (send_reply(SERVER_NAME, member, 318, msg.get_params()[0]));
-//}
-
-//int Server::whowas_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() == 0)
-//		return (send_error(member, 431));
-//
-//	else if (!isExistMember(msg.get_params()[0])) {
-//		const std::vector<const UserInfo *> history_list = m_history.get_history(msg.get_params()[0]);
-//		if (history_list.size() == 0)
-//			send_error(member, 406, msg.get_params()[0]);
-//		else {
-//			int n = 0;
-//			if (msg.get_params().size() > 1)
-//				n = atoi(msg.get_params()[1].c_str());
-//			n = (n == 0) ? history_list.size() : n;
-//
-//			for (int i = 0; i < n && i < static_cast<int>(history_list.size()); ++i) {
-//				send_reply(SERVER_NAME, member, 314, history_list[i]->get_nick(), \
-//					SERVER_NAME, history_list[i]->get_hostname());
-//				send_reply(SERVER_NAME, member, 312, history_list[i]->get_nick(), \
-//					SERVER_NAME, info);
-//			}
-//		}
-//	}
-//	return (send_reply(SERVER_NAME, member, 369, msg.get_params()[0]));
-//}
-
-//int Server::mode_cmd(const Message &msg, Client &member) {
-//	if (msg.get_params().size() < 1)
-//		send_error(member, 461, "MODE");
-//	else
-//	{
-//		if (msg.get_params()[0][0] == '#') {
-//			if (!is_exist_chat(msg.get_params()[0]))
-//				send_error(member, 403, msg.get_params()[0]);
-//			else if (!chats.at(msg.get_params()[0])->is_admin(member))
-//				send_error(member, 482, msg.get_params()[0]);
-//			else if (!chats.at(msg.get_params()[0])->is_exist_member(member.get_nick()))
-//				send_error(member, 442, msg.get_params()[0]);
-//			else if (msg.get_params().size() == 1)
-//				send_reply(SERVER_NAME, member, 324, msg.get_params()[0], chats.at(msg.get_params()[0])->str_flags());
-//			else if (handle_flags(msg, member) != -1) {
-//				std::string	flag = msg.get_params()[1];
-//				std::string	tmp = (flag[1] == 'o' || flag[1] == 'v') ? " " + msg.get_params()[2] : "";
-//				chats.at(msg.get_params()[0])->send_message("MODE " + msg.get_params()[0] + " " + msg.get_params()[1]  + tmp + "\n", member);
-//			}
-//		} else {
-//			if (msg.get_params()[0] != member.get_nick())
-//				send_error(member, 502);
-//			else {
-//				if (msg.get_params().size() == 1) {
-//					std::string	flags = "+";
-//					if (member.get_flags() & INVISIBLE)
-//						flags += "i";
-//					if (member.get_flags() & RECEIVENOTICE)
-//						flags += "s";
-//					if (member.get_flags() & RECEIVEWALLOPS)
-//						flags += "w";
-//					if (member.get_flags() & IRCOPERATOR)
-//						flags += "o";
-//					send_reply(SERVER_NAME, member, 221, flags);
-//				}
-//				else if (handle_flags(msg, member) != -1)
-//					member.send_message(":" + member.get_prefix() + "MODE " + msg.get_params()[0] + " " + msg.get_params()[1] + "\n");
-//			}
-//		}
-//	}
-//	return 0;
-//}
-
-//int Server::topic_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() < 1)
-//		send_error(member, 461, "TOPIC");
-//	else if (!is_exist_chat(msg.get_params()[0]))
-//		send_error(member, 442, msg.get_params()[0]);
-//	else {
-//		Chat *tmp = chats.at(msg.get_params()[0]);
-//		if (!tmp->is_exist_member(member.get_nick()))
-//			send_error(member, 442, msg.get_params()[0]);
-//		else if (msg.get_params().size() < 2)
-//			tmp->display_topic(member);
-//		else
-//			tmp->set_topic(member, msg.get_params()[1]);
-//	}
-//	return 0;
-//}
 
 int Server::join_cmd(const Message &msg, Client &member)
 {
@@ -424,48 +233,6 @@ int Server::part_cmd(const Message &msg, Client &member) {
 	return 0;
 }
 
-//int Server::names_cmd(const Message &msg, Client &member) {
-//	if (msg.get_params().size() == 0) {
-//		std::vector<std::string>	members_without_chat;
-//		for (size_t i = 0; i < m_users.size(); i++)
-//			members_without_chat.push_back(m_users[i]->get_nick());
-//		for (std::map<std::string, Chat*>::const_iterator it = chats.begin(); it != chats.end(); ++it) {
-//			if (!((*it).second->get_flags() & SECRET) && !((*it).second->get_flags() & PRIVATE)) {
-//				(*it).second->display_members(member);
-//				for (size_t i = 0; i < members_without_chat.size(); i++)
-//					if ((*it).second->is_exist_member(members_without_chat[i]))
-//						members_without_chat.erase(members_without_chat.begin() + i--);
-//			}
-//		}
-//		std::string	names;
-//		for (size_t i = 0; i < members_without_chat.size(); i++) {
-//			names += members_without_chat[i];
-//			if (i != (members_without_chat.size() - 1))
-//				names += " ";
-//		}
-//		send_reply(SERVER_NAME, member, 353, "* *", names);
-//		send_reply(SERVER_NAME, member, 366, "*");
-//	}
-//	else {
-//		std::queue<std::string>	chat_queue;
-//		chat_queue = fill(msg.get_params()[0], ',');
-//		while (chat_queue.size() > 0) {
-//			try {
-//				Chat *tmp = chats.at(chat_queue.front());
-//				if (!(tmp->get_flags() & SECRET) && !(tmp->get_flags() & PRIVATE)) {
-//					tmp->display_members(member);
-//					send_reply(SERVER_NAME, member, 366, tmp->get_name());
-//				}
-//			}
-//			catch(const std::exception& e) {
-//
-//			}
-//			chat_queue.pop();
-//		}
-//	}
-//	return 0;
-//}
-
 //check
 int Server::list_cmd(const Message &msg, Client &member) {
 	if (msg.get_params().size() > 1 && msg.get_params()[1] != SERVER_NAME)
@@ -491,162 +258,6 @@ int Server::list_cmd(const Message &msg, Client &member) {
 	send_reply(SERVER_NAME, member, 323);
 	return 0;
 }
-
-//int Server::wallops_cmd(const Message &msg, Client &member)
-//{
-//	if (!(member.get_flags() & IRCOPERATOR))
-//		return (send_error(member, 481));
-//	if (msg.get_params().size() == 0)
-//		return (send_error(member, 461, msg.get_command()));
-//
-//	const std::vector<Client *> member_list = m_users;
-//	for (size_t i = 0; i < member_list.size(); ++i)
-//		if (member_list[i]->get_flags() & IRCOPERATOR)
-//			member_list[i]->send_message(":" + member.get_prefix() +  " " + msg.get_command() + " :" + msg.get_params()[0] + "\n");
-//	return 0;
-//}
-//
-//int Server::ping_cmd(const Message &msg, Client &member)
-//{
-//	std::string name = SERVER_NAME;
-//	if (msg.get_params().size() == 0)
-//		return (send_error(member, 409));
-//	member.send_message(":" + name + " PONG :" + msg.get_params()[0] + "\n");
-//	return 0;
-//}
-//
-//int Server::pong_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() <= 0 || msg.get_params()[0] != SERVER_NAME)
-//		return (send_error(member, 403, msg.get_params().size() > 0 ? msg.get_params()[0] : ""));
-//	member.delete_flag(PINGING);
-//	return 0;
-//}
-//
-//int Server::ison_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() == 0)
-//		return (send_error(member, 461, msg.get_command()));
-//
-//	std::string	nicks;
-//	for (size_t i = 0; i < msg.get_params().size(); ++i)
-//	{
-//		if (isExistMember(msg.get_params()[i]))
-//		{
-//			if (nicks.size() > 0)
-//				nicks += " ";
-//			nicks += msg.get_params()[i];
-//		}
-//	}
-//	return (send_reply(SERVER_NAME, member, 303, nicks));
-//}
-//
-//int Server::userhost_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() == 0)
-//		return (send_error(member, 461, msg.get_command()));
-//
-//	std::string	text;
-//	for (size_t i = 0; i < msg.get_params().size() && i < 5; ++i)
-//	{
-//		if (isExistMember(msg.get_params()[i]))
-//		{
-//			Client *client = get_member(msg.get_params()[i]);
-//			if (text.size() > 0)
-//				text += " ";
-//			text += msg.get_params()[i];
-//			if (client->get_flags() & IRCOPERATOR)
-//				text += "*";
-//			text += (client->get_flags() & AWAY) ? "=-@" : "=+@";
-//			text += client->get_host();
-//		}
-//	}
-//	return (send_reply(SERVER_NAME, member, 302, text));
-//}
-//
-//int Server::version_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() > 0 && msg.get_params()[0] != SERVER_NAME)
-//		return (send_error(member, 402, msg.get_params()[0]));
-//	return (send_reply(SERVER_NAME, member, 351, "v1", "1", "SERVER_NAME"));
-//}
-//
-//int Server::info_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() > 0 && msg.get_params()[0] != SERVER_NAME)
-//		return (send_error(member, 402, msg.get_params()[0]));
-//	std::queue<std::string>	lines = fill("describe", '\n');
-//	for (;lines.size() > 0; lines.pop())
-//		send_reply(SERVER_NAME, member, 371, lines.front());
-//	send_reply(SERVER_NAME, member, 371, info);
-//	return (send_reply(SERVER_NAME, member, 374));
-//}
-//
-//int Server::admin_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() > 0 && msg.get_params()[0] != SERVER_NAME)
-//		return (send_error(member, 402, msg.get_params()[0]));
-//	send_reply(SERVER_NAME, member, 256, SERVER_NAME);
-//	send_reply(SERVER_NAME, member, 257, "admin");
-//	send_reply(SERVER_NAME, member, 258, "admin");
-//	send_reply(SERVER_NAME, member, 259, "admin@admin.admin");
-//	return 0;
-//}
-//
-//int Server::time_cmd(const Message &msg, Client &member)
-//{
-//	if (msg.get_params().size() > 0 && msg.get_params()[0] != SERVER_NAME)
-//		return (send_error(member, 402, msg.get_params()[0]));
-//	time_t tmp = time(0);
-//	return (send_reply(SERVER_NAME, member, 391, SERVER_NAME, ctime(&tmp)));
-//}
-//
-//int Server::rehash_cmd(const Message &msg, Client &member)
-//{
-//	(void)msg;
-//	if (!(member.get_flags() & IRCOPERATOR))
-//		return (send_error(member, 481));
-//	return (send_reply(SERVER_NAME, member, 382));
-//}
-//
-//int Server::kill_cmd(const Message &msg, Client &member)
-//{
-//	if (!(member.get_flags() & IRCOPERATOR))
-//		return (send_error(member, 481));
-//	if (msg.get_params().size() < 2)
-//		return (send_error(member, 461));
-//	std::string username = msg.get_params()[0];
-//	if (username == SERVER_NAME)
-//		return (send_error(member, 483));
-//	if (!isExistMember(username))
-//		send_error(member, 401, msg.get_params()[0]);
-//	Client *userToKill = get_member(username);
-//	userToKill->send_message(msg.get_params()[1] + "\n");
-//	userToKill->set_flag(BREAKCONNECTION);
-//	return 0;
-//}
-//
-//int Server::restart_cmd(const Message &msg, Client &member)
-//{
-//	(void)msg;
-//	if (!(member.get_flags() & IRCOPERATOR))
-//		return (send_error(member, 481));
-//	for (std::vector<Client *>::iterator it = m_users.begin(); it != m_users.end(); ++it)
-//		(*it)->set_flag(BREAKCONNECTION);
-//	close(m_socket_fd);
-//	if ((m_socket_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1)
-//		exit_program("Socket initialization error!");
-//
-//	int	yes = 1;
-//
-//	if (setsockopt(m_socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1
-//		|| bind(m_socket_fd, reinterpret_cast<struct sockaddr *>(&m_addr), m_addrLen) == -1)
-//		exit_program("Setsockopt failed!");
-//	if (listen(m_socket_fd, BACK_LOG) == -1)
-//		exit_program("Listen failed!");
-//	fcntl(m_socket_fd, F_SETFL, O_NONBLOCK);
-//	return 0;
-//}
 
 void Server::sigProcess(int sig_code)
 {
@@ -817,39 +428,38 @@ void Server::invite_to_chat(const Client &member, const std::string &nick, const
 		chat->invite(member, *receiver);
 }
 
+int Server::ping_cmd(const Message &msg, Client &member)
+{
+	std::string name = SERVER_NAME;
+	if (msg.get_params().size() == 0)
+		return (send_error(member, 409));
+	member.send_message(":" + name + " PONG :" + msg.get_params()[0] + "\n");
+	return 0;
+}
+
+int Server::pong_cmd(const Message &msg, Client &member)
+{
+	if (msg.get_params().size() <= 0 || msg.get_params()[0] != SERVER_NAME)
+		return (send_error(member, 402, msg.get_params().size() > 0 ? msg.get_params()[0] : ""));
+	member.delete_flag(PINGING);
+	return 0;
+}
+
 void Server::init_cmds()
 {
 	m_mapCmd["PASS"] = &Server::pass_cmd;
 	m_mapCmd["NICK"] = &Server::nick_cmd;
 	m_mapCmd["USER"] = &Server::user_cmd;
-//	m_mapCmd["OPER"] = &Server::oper_cmd;
 	m_mapCmd["QUIT"] = &Server::quit_cmd;
 	m_mapCmd["PRIVMSG"] = &Server::privmsg_cmd;
-//	m_mapCmd["AWAY"] = &Server::away_cmd;
 	m_mapCmd["NOTICE"] = &Server::notice_cmd;
-//	m_mapCmd["WHO"] = &Server::who_cmd;
-//	m_mapCmd["WHOIS"] = &Server::whois_cmd;
-//	m_mapCmd["WHOWAS"] = &Server::whowas_cmd;
-//	m_mapCmd["MODE"] = &Server::mode_cmd;
-//	m_mapCmd["TOPIC"] = &Server::topic_cmd;
 	m_mapCmd["JOIN"] = &Server::join_cmd;
 	m_mapCmd["INVITE"] = &Server::invite_cmd;
 	m_mapCmd["KICK"] = &Server::kick_cmd;
 	m_mapCmd["PART"] = &Server::part_cmd;
-//	m_mapCmd["NAMES"] = &Server::names_cmd;
 	m_mapCmd["LIST"] = &Server::list_cmd;
-//	m_mapCmd["WALLOPS"] = &Server::wallops_cmd;
-//	m_mapCmd["PING"] = &Server::ping_cmd;
-//	m_mapCmd["PONG"] = &Server::pong_cmd;
-//	m_mapCmd["ISON"] = &Server::ison_cmd;
-//	m_mapCmd["USERHOST"] = &Server::userhost_cmd;
-//	m_mapCmd["VERSION"] = &Server::version_cmd;
-//	m_mapCmd["INFO"] = &Server::info_cmd;
-//	m_mapCmd["ADMIN"] = &Server::admin_cmd;
-//	m_mapCmd["TIME"] = &Server::time_cmd;
-//	m_mapCmd["REHASH"] = &Server::rehash_cmd;
-//	m_mapCmd["RESTART"] = &Server::restart_cmd;
-//	m_mapCmd["KILL"] = &Server::kill_cmd;
+	m_mapCmd["PING"] = &Server::ping_cmd;
+	m_mapCmd["PONG"] = &Server::pong_cmd;
 }
 
 void Server::go() {
@@ -865,9 +475,7 @@ void Server::go() {
 		std::cerr << "Error: Socket initialization error!" << std::endl;
 		exit(1);
 	}
-
 	int	yes = 1;
-
 	if (setsockopt(m_socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1
 		|| bind(m_socket_fd, reinterpret_cast<struct sockaddr *>(&m_addr), m_addrLen) == -1) {
 		std::cerr << "Error: setsockopt failed!" << std::endl;
@@ -879,7 +487,6 @@ void Server::go() {
 		exit(1);
 	}
 	fcntl(m_socket_fd, F_SETFL, O_NONBLOCK);
-
 
 	while(boolWork) {
 		if ((m_client_fd = accept(m_socket_fd, reinterpret_cast<struct sockaddr*>(&m_addr), &m_addrLen)) >= 0) {
@@ -912,7 +519,7 @@ void Server::go() {
 					this->m_users[i]->update_time_last_mes();
 					this->m_users[i]->set_flag(PINGING);
 				}
-				if ((m_users[i]->get_flags() & PINGING) && time(0) - m_users[i]->get_time_ping() > static_cast<time_t>(60) )
+				if ((m_users[i]->get_flags() & PINGING) && time(0) - m_users[i]->get_time_ping() > static_cast<time_t>(60))
 					m_users[i]->set_flag(BREAKCONNECTION);
 			}
 		}
@@ -923,8 +530,8 @@ void Server::go() {
 				notify(*(m_users[i]), ": " + m_users[i]->get_prefix() + "QUIT :" + m_users[i]->get_exit_msg() + "\n");
 				close(m_users[i]->get_socket());
 				for (std::map<std::string, Chat *>::iterator it = chats.begin(); it != chats.end(); ++it)
-					if ((*it).second->is_exist_member(m_users[i]->get_nick()))
-						(*it).second->disconnect(*(m_users[i]));
+					if (it->second->is_exist_member(m_users[i]->get_nick()))
+						it->second->disconnect(*(m_users[i]));
 				delete m_users[i];
 				m_users.erase(m_users.begin() + i);
 				m_clientFds.erase(m_clientFds.begin() + i);
@@ -933,7 +540,7 @@ void Server::go() {
 		}
 
 		for (std::map<std::string, Chat *>::const_iterator it = chats.begin(); it != chats.end(); ) {
-			if ((*it).second->is_empty()) {
+			if (it->second->is_empty()) {
 				delete it->second;
 				chats.erase((*it).first);
 				it = chats.begin();

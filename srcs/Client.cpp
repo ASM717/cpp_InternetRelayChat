@@ -1,7 +1,7 @@
-#include "Client.hpp"
+#include "../includes/Client.hpp"
 
 Client::Client(int Socket_fd, const std::string &Host_ip): socket_fd(Socket_fd), host_ip(Host_ip),
-	registration_time(time(NULL)), flags(RECEIVENOTICE)
+														   registration_time(time(NULL)), flags(RECEIVENOTICE)
 {
 
 }

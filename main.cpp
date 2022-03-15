@@ -1,4 +1,4 @@
-#include <Server.hpp>
+#include "includes/Server.hpp"
 
 int main(int argc, char** argv)
 {
@@ -19,5 +19,5 @@ int main(int argc, char** argv)
 		std::cout << e.what() << std::endl;
 	}
 	return (0);
-
 }
+

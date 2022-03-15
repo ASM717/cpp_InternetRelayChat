@@ -5,3 +5,8 @@
 .idea
 /ircserv
 /objs/
+/.vscode
+/bot/bot
+/bot/*.o
+/bot/bot.dSYM/
+/a.out

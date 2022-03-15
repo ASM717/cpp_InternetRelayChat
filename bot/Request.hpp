@@ -1,33 +1,43 @@
-#ifndef FT_IRC_REQUEST_HPP
-#define FT_IRC_REQUEST_HPP
+#pragma once
 
-# include "utils.hpp"
+#include <iostream>
+#include <map>
+#include <cerrno>
+#include <vector>
+#include <set>
+#include <queue>
+#include <unistd.h>
+#include <cstdlib>
+#include <algorithm>
+#include <sys/socket.h>
+#include <fcntl.h>
+#include <ctime>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/poll.h>
+#include <sys/event.h>
+#include <csignal>
+#include <sstream>
+#include <fstream>
 
-class Request
-{
+class Request {
 private:
-	std::string					prefix;
-	std::string					command;
-	std::vector<std::string>	params;
-	std::string					request;
-	std::queue<std::string>		params_queue;
+	std::string					m_request;
+	std::queue<std::string>		m_paramsQueue;
+	std::vector<std::string>	m_params;
+	std::string					m_prefix;
+	std::string					m_command;
 
 	Request();
-	Request(const Request& other);
-	Request& operator=(const Request& other);
+	Request(const Request &ref);
+	Request& operator=(const Request &ref);
 
-	void get_params_queue();
-	void find_prefix();
-	void find_command();
-	void find_params();
 public:
 	Request(const std::string& Request);
 	~Request();
 
-	const std::string& get_prefix() const;
-	const std::string& get_command() const;
-	const std::vector<std::string>& get_params() const;
+	const std::string& getPrefix() const;
+	const std::string& getCommand() const;
+	const std::vector<std::string>& getParams() const;
 };
-
-
-#endif

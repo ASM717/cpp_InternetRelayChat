@@ -1,7 +1,7 @@
 #ifndef FT_IRC_CHAT_HPP
 #define FT_IRC_CHAT_HPP
 
-# include "utils.hpp"
+#include "utils.hpp"
 
 class Client;
 
@@ -44,10 +44,10 @@ public:
 	const std::string&	get_name() const;
 	const unsigned char&	get_flags() const;
 
-	void set_topic(const Client& member, const std::string& topic_name);
-	void set_limit(int limit);
-	void set_password(const Client& member, const std::string& pass);
-	void set_flag(unsigned char flag);
+//	void set_topic(const Client& member, const std::string& topic_name);
+//	void set_limit(int limit);
+//	void set_password(const Client& member, const std::string& pass);
+//	void set_flag(unsigned char flag);
 
 	bool is_admin(const Client& member) const;
 	bool is_speaker(const Client& member) const;
@@ -58,14 +58,14 @@ public:
 
 	void connect(const Client &member, const std::string &pass);
 	void remove_invited(const Client& member);
-	void remove_flag(unsigned char flag);
+//	void remove_flag(unsigned char flag);
 	void invite(const Client& member, const Client& inviter);
-	void add_admin(const Client &member);
+//	void add_admin(const Client &member);
 	void remove_admin(const Client &member);
-	void add_speaker(const Client &member);
+//	void add_speaker(const Client &member);
 	void remove_speaker(const Client &member);
-	void add_ban_mask(const std::string& mask);
-	void remove_ban_mask(const std::string &mask);
+//	void add_ban_mask(const std::string& mask);
+//	void remove_ban_mask(const std::string &mask);
 	void disconnect(const Client &member);
 	void member_chat_info(const Client &member);
 	std::string str_flags() const;

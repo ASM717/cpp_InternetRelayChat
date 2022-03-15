@@ -1,7 +1,7 @@
-#include "Chat.hpp"
+#include "../includes/Chat.hpp"
 
 Chat::Chat(const std::string &chat_name, const Client &admin, const std::string &chat_password):
-	name(chat_name), password(chat_password), client_limit(0), flags(NOMSGOUT)
+		name(chat_name), password(chat_password), client_limit(0), flags(NOMSGOUT)
 {
 	members.push_back(&admin);
 	admins.push_back(&admin);
@@ -90,35 +90,6 @@ const unsigned char& Chat::get_flags() const
 	return flags;
 }
 
-void Chat::set_topic(const Client &member, const std::string &topic_name)
-{
-	if ((flags & TOPICSET) && !is_admin(member))
-		send_error(member, 482, name);
-	else
-	{
-		topic = topic_name;
-		send_message("TOPIC: " + name + " :" + topic + "\n", member);
-	}
-}
-
-void Chat::set_limit(int limit)
-{
-	client_limit = limit;
-}
-
-void Chat::set_password(const Client &member, const std::string &pass)
-{
-	if (password.size() > 0 && pass.size() > 0)
-		send_error(member, 467, name);
-	else
-		password = pass;
-}
-
-void Chat::set_flag(unsigned char flag)
-{
-	flags |= flag;
-}
-
 bool Chat::is_invited(const Client &member) const
 {
 	for (size_t i = 0; i < invited_members.size(); ++i)
@@ -179,12 +150,7 @@ void Chat::remove_invited(const Client &member)
 	}
 }
 
-void Chat::remove_flag(unsigned char flag)
-{
-	flag &= ~flag;
-}
-
-void	Chat::invite(const Client &member, const Client &inviter)
+void Chat::invite(const Client &member, const Client &inviter)
 {
 	if (flags & INVITEONLY && !is_admin(member))
 		send_error(member, 482, name);
@@ -196,12 +162,6 @@ void	Chat::invite(const Client &member, const Client &inviter)
 		if (inviter.get_flags() & AWAY)
 			send_reply(SERVER_NAME, member, 301, inviter.get_nick(), inviter.get_exit_msg());
 	}
-}
-
-void	Chat::add_admin(const Client &member)
-{
-	if (!is_admin(member))
-		admins.push_back(&member);
 }
 
 void	Chat::remove_admin(const Client &member)
@@ -221,13 +181,7 @@ void	Chat::remove_admin(const Client &member)
 	}
 }
 
-void	Chat::add_speaker(const Client &member)
-{
-	if (!is_speaker(member))
-		speakers.push_back(&member);
-}
-
-void	Chat::remove_speaker(const Client &member)
+void Chat::remove_speaker(const Client &member)
 {
 	if (is_speaker(member))
 	{
@@ -239,21 +193,7 @@ void	Chat::remove_speaker(const Client &member)
 	}
 }
 
-void	Chat::add_ban_mask(const std::string &mask)
-{
-	ban_masks.push_back(mask);
-}
-
-void	Chat::remove_ban_mask(const std::string &mask)
-{
-	size_t	i;
-	for (i = 0; i < ban_masks.size(); i++)
-		if (ban_masks[i] == mask)
-			break;
-	ban_masks.erase(ban_masks.begin() + i);
-}
-
-void	Chat::disconnect(const Client& user)
+void Chat::disconnect(const Client& user)
 {
 	const_iterator it = members.begin();
 	for (; it != members.end(); ++it)
@@ -264,7 +204,7 @@ void	Chat::disconnect(const Client& user)
 	remove_speaker(user);
 }
 
-void	Chat::member_chat_info(const Client &member)
+void Chat::member_chat_info(const Client &member)
 {
 	std::string	chat_name = "";
 	std::string	info = "";
