@@ -3,7 +3,7 @@
 #include "Request.hpp"
 
 # define IRC_BOT "ircbot"
-# define SERVER_NAME "ft_irc"
+# define IRC_SERV "ft_irc"
 # define BUFF_SIZE 1024
 
 class Bot {
@@ -16,7 +16,7 @@ private:
 	std::string					m_content;
 	std::string					m_serverPass;
 	std::string					m_nickBot;
-	char 						m_recvBuf[BUFF_SIZE];
+	char 						m_recvBuf[1024];
 	int							m_port;
 	static bool					work;
 	std::queue<std::string>		m_requestQueue;

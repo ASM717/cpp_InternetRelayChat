@@ -5,7 +5,7 @@ int main(int argc, char** argv) {
 	int port;
 
 	if (argc != 3) {
-		std::cerr << "Error: You should use ./bot <m_port> <password of ircserv>" << std::endl;
+		std::cerr << "Error: You should use ./bot <m_port> <m_passsword of ircserv>" << std::endl;
 		exit(1);
 	}
 	port = atoi(argv[1]);

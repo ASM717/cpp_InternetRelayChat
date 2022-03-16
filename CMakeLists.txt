@@ -7,26 +7,21 @@ add_executable(cpp_InternetRelayChat
 
         includes/Chat.hpp
         includes/Client.hpp
-        includes/History.hpp
+        includes/Hist.hpp
         includes/Message.hpp
         includes/Server.hpp
-        includes/UserInfo.hpp
-        includes/utils.hpp
+        includes/Information.hpp
 
         srcs/Chat.cpp
         srcs/Client.cpp
-        srcs/History.cpp
+        srcs/Hist.cpp
         srcs/Message.cpp
         srcs/Server.cpp
-        srcs/UserInfo.cpp
-        srcs/utils.cpp
+        srcs/Information.cpp
 
 
         main.cpp
 
-
-
-#        ft_chat
         bot/Bot.cpp
         bot/Bot.hpp
 

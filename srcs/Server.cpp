@@ -5,8 +5,8 @@ bool Server::boolWork;
 Server::Server(int Port, std::string Password): m_port(Port), m_pass(Password), m_timeout(1)
 {
 	std::cout << "IRCserver is started at m_port " << m_port << std::endl;
-	init_cmds();
-	std::string line = "Hello man, you are connect";
+	allIRCCommands();
+	std::string line = "Hello man, you are connection";
 	motd.push_back(line);
 }
 
@@ -14,7 +14,7 @@ Server::~Server()
 {
 	for (size_t i = 0; i < m_users.size(); ++i)
 	{
-		close(m_users[i]->get_socket());
+		close(m_users[i]->getSocket());
 		delete m_users[i];
 	}
 	for (std::map<std::string, Chat *>::const_iterator it = chats.begin(); it != chats.end(); ++it)
@@ -22,104 +22,105 @@ Server::~Server()
 	close(m_socket_fd);
 }
 
-int Server::handle_mes(Client& member)
+int Server::handleMes(Client& member)
 {
-	while (member.get_messages().size() > 0 && member.get_messages().front()[member.get_messages().front().size() - 1] == '\n')
+	while (member.getMessages().size() > 0 &&
+			member.getMessages().front()[member.getMessages().front().size() - 1] == '\n')
 	{
-		Message	msg(member.get_messages().front());
-		member.delete_message();
-		log_message(msg);
-		if (!(member.get_flags() & REGISTERED) && msg.get_command() != "QUIT" && msg.get_command() != "PASS" \
-			&& msg.get_command() != "USER" && msg.get_command() != "NICK")
-			send_error(member, 451);
+		Message	msg(member.getMessages().front());
+		member.deleteMes();
+		logging(msg);
+		if (!(member.getFlags() & REGISTERED) && msg.getCommand() != "QUIT" && msg.getCommand() != "PASS" \
+ && msg.getCommand() != "USER" && msg.getCommand() != "NICK")
+			errSend(member, 451);
 		else {
 			try {
-				int ret = (this->*(m_mapCmd.at(msg.get_command())))(msg, member);
+				int ret = (this->*(m_mapCmd.at(msg.getCommand())))(msg, member);
 				if (ret == -1)
 					return (-1);
 			}
 			catch(const std::exception& e) {
-				send_error(member, 421, msg.get_command());
+				errSend(member, 421, msg.getCommand());
 			}
 		}
 	}
-	member.update_time_last_mes();
+	member.updateTimeLastMes();
 	return (0);
 }
 
-int Server::pass_cmd(const Message &msg, Client &member)
+int Server::cmdPassword(const Message &msg, Client &member)
 {
-	if (msg.get_params().size() == 0)
-		send_error(member, 461, msg.get_command());
-	else if (member.get_flags() & REGISTERED)
-		send_error(member, 462);
+	if (msg.getParams().size() == 0)
+		errSend(member, 461, msg.getCommand());
+	else if (member.getFlags() & REGISTERED)
+		errSend(member, 462);
 	else
-		member.set_password(msg.get_params()[0]);
-	return 0;
+		member.setPassword(msg.getParams()[0]);
+	return (0);
 }
 
-int Server::nick_cmd(const Message &msg, Client &member)
+int Server::cmdNickName(const Message &msg, Client &member)
 {
-	if (msg.get_params().size() == 0)
-		send_error(member, 461, msg.get_command());
-	else if (!is_valid_nick(msg.get_params()[0]) || msg.get_params()[0] == SERVER_NAME)
-		send_error(member, 432, msg.get_params()[0]);
-	else if (isExistMember(msg.get_params()[0]))
-		send_error(member, 433, msg.get_params()[0]);
+	if (msg.getParams().size() == 0)
+		errSend(member, 461, msg.getCommand());
+	else if (!verifyNickVal(msg.getParams()[0]) || msg.getParams()[0] == IRC_SERV)
+		errSend(member, 432, msg.getParams()[0]);
+	else if (verifyExistUsers(msg.getParams()[0]))
+		errSend(member, 433, msg.getParams()[0]);
 	else {
-		if (member.get_flags() & REGISTERED) {
-			notify(member, ":" + member.get_prefix() + " " + msg.get_command() + " " + msg.get_params()[0] + "\n");
-			m_history.add_user(member);
+		if (member.getFlags() & REGISTERED) {
+			notification(member, ":" + member.getPrefix() + " " + msg.getCommand() + " " + msg.getParams()[0] + "\n");
+			m_history.addUser(member);
 		}
-		member.set_nick(msg.get_params()[0]);
+		member.setNick(msg.getParams()[0]);
 	}
-	return connect_member(member);
+	return usersConnection(member);
 }
 
-int Server::user_cmd(const Message &msg, Client &member)
+int Server::cmdUser(const Message &msg, Client &member)
 {
-	if (msg.get_params().size() < 4)
-		send_error(member, 461, msg.get_command());
-	else if (member.get_flags() & REGISTERED)
-		send_error(member, 462);
+	if (msg.getParams().size() < 4)
+		errSend(member, 461, msg.getCommand());
+	else if (member.getFlags() & REGISTERED)
+		errSend(member, 462);
 	else {
-		member.set_username(msg.get_params()[0]);
-		member.set_realname(msg.get_params()[3]);
+		member.setUsername(msg.getParams()[0]);
+		member.setRealName(msg.getParams()[3]);
 	}
-	return connect_member(member);
+	return usersConnection(member);
 }
 
-int Server::quit_cmd(const Message &msg, Client &member)
+int Server::cmdQuit(const Message &msg, Client &member)
 {
-	if (msg.get_params().size() > 0)
-		member.set_exit_msg(msg.get_params()[0]);
-	m_history.add_user(member);
+	if (msg.getParams().size() > 0)
+		member.setExitMsg(msg.getParams()[0]);
+	m_history.addUser(member);
 	return (-1);
 }
 
-int Server::privmsg_cmd(const Message &msg, Client &member)
+int Server::cmdPrivMessage(const Message &msg, Client &member)
 {
-	if (msg.get_params().size() == 0)
-		return (send_error(member, 411, msg.get_command()));
-	if (msg.get_params().size() == 1)
-		return (send_error(member, 412));
+	if (msg.getParams().size() == 0)
+		return (errSend(member, 411, msg.getCommand()));
+	if (msg.getParams().size() == 1)
+		return (errSend(member, 412));
 
-	std::queue<std::string> receivers = fill(msg.get_params()[0], ',');
+	std::queue<std::string> receivers = qFiller(msg.getParams()[0], ',');
 	std::set<std::string> uniq;
 
-	if (msg.get_command() == "NOTICE" && (receivers.size() > 1 || receivers.front()[0] == '#' || receivers.front()[0] == '&'))
-		return (send_error(member, 401, msg.get_params()[0]));
+	if (msg.getCommand() == "NOTICE" && (receivers.size() > 1 || receivers.front()[0] == '#' || receivers.front()[0] == '&'))
+		return (errSend(member, 401, msg.getParams()[0]));
 
 	while (receivers.size() > 0) {
 		if (uniq.find(receivers.front()) != uniq.end())
-			return (send_error(member, 407, receivers.front()));
+			return (errSend(member, 407, receivers.front()));
 		if (receivers.front()[0] == '#' || receivers.front()[0] == '&') {
-			if (!is_exist_chat(receivers.front()))
-				return (send_error(member, 401, receivers.front()));
-			if (!chats[receivers.front()]->is_exist_member(member.get_nick()))
-				return (send_error(member, 404, receivers.front()));
-		} else if (!isExistMember(receivers.front()))
-			return (send_error(member, 401, msg.get_params()[0]));
+			if (!verifyExtChat(receivers.front()))
+				return (errSend(member, 401, receivers.front()));
+			if (!chats[receivers.front()]->verifyUsers(member.getNick()))
+				return (errSend(member, 404, receivers.front()));
+		} else if (!verifyExistUsers(receivers.front()))
+			return (errSend(member, 401, msg.getParams()[0]));
 		uniq.insert(receivers.front());
 		receivers.pop();
 	}
@@ -127,122 +128,121 @@ int Server::privmsg_cmd(const Message &msg, Client &member)
 	for (std::set<std::string>::iterator it = uniq.begin(); it != uniq.end(); ++it) {
 		if ((*it)[0] == '#' || (*it)[0] == '&') {
 			Chat *receiver_chat = chats[*it];
-			if (receiver_chat->get_flags() & MODERATED && (!receiver_chat->is_admin(member)
-				&& !receiver_chat->is_speaker(member)))
-				send_error(member, 404, *it);
+			if (receiver_chat->getFlags() & MODERATED && (!receiver_chat->verifyAdmin(member)
+														  && !receiver_chat->verifySpeaker(member)))
+				errSend(member, 404, *it);
 			else
-				receiver_chat->send_message(msg.get_command() + " " + *it + " :"
-				+ msg.get_params()[1] + "\n", member);
+				receiver_chat->sendMess(msg.getCommand() + " " + *it + " :"
+										+ msg.getParams()[1] + "\n", member);
 		} else {
-			if (msg.get_command() == "PRIVMSG" && (get_member(*it)->get_flags() & AWAY))
-				send_reply(SERVER_NAME, member, 301, *it, get_member(*it)->get_exit_msg());
-			if (msg.get_command() != "NOTICE" || (get_member(*it)->get_flags() & RECEIVENOTICE))
-				get_member(*it)->send_message(":" + member.get_prefix() + " "
-				+ msg.get_command() + " " + *it + " :" + msg.get_params()[1] + "\n");
+			if (msg.getCommand() == "PRIVMSG" && (getMembers(*it)->getFlags() & AWAY))
+				rplSend(IRC_SERV, member, 301, *it, getMembers(*it)->getExitMsg());
+			if (msg.getCommand() != "NOTICE" || (getMembers(*it)->getFlags() & RECEIVENOTICE))
+				getMembers(*it)->sendMessage(":" + member.getPrefix() + " "
+											 + msg.getCommand() + " " + *it + " :" + msg.getParams()[1] + "\n");
 		}
 	}
-	return 0;
+	return (0);
 }
 
-int Server::notice_cmd(const Message &msg, Client &member) {
-	privmsg_cmd(msg, member);
-	return 0;
+int Server::cmdNotice(const Message &msg, Client &member) {
+	cmdPrivMessage(msg, member);
+	return (0);
 }
 
-int Server::join_cmd(const Message &msg, Client &member)
+int Server::cmdJoin(const Message &msg, Client &member)
 {
-	if (msg.get_params().size() == 0)
-		send_error(member, 461, msg.get_command());
+	if (msg.getParams().size() == 0)
+		errSend(member, 461, msg.getCommand());
 	else {
-		std::queue<std::string>	chats_queue = fill(msg.get_params()[0], ',');
+		std::queue<std::string>	chats_queue = qFiller(msg.getParams()[0], ',');
 		std::queue<std::string>	keys;
-		if (msg.get_params().size() > 1)
-			keys = fill(msg.get_params()[1], ',');
+		if (msg.getParams().size() > 1)
+			keys = qFiller(msg.getParams()[1], ',');
 		for (; chats_queue.size() > 0; chats_queue.pop()) {
 			std::string	key = keys.size() ? keys.front() : "";
 			if (keys.size() > 0)
 				keys.pop();
-			if (!is_correct_chat(chats_queue.front()))
-				send_error(member, 403, chats_queue.front());
-			else if (member.get_chats().size() >= 10)
-				send_error(member, 405, chats_queue.front());
-			else if (connect_to_chat(member, chats_queue.front(), key) == 1)
-				member.add_chat(*(chats.at(chats_queue.front())));
+			if (!verifyCorrectionChat(chats_queue.front()))
+				errSend(member, 403, chats_queue.front());
+			else if (member.getChats().size() >= 10)
+				errSend(member, 405, chats_queue.front());
+			else if (chatConnectionUs(member, chats_queue.front(), key) == 1)
+				member.addChat(*(chats.at(chats_queue.front())));
 		}
 	}
-	return 0;
+	return (0);
 }
 
-int Server::invite_cmd(const Message &msg, Client &member) {
-	if (msg.get_params().size() < 2)
-		send_error(member, 461, "INVITE");
-	else if (!isExistMember(msg.get_params()[0]))
-		send_error(member, 401, msg.get_params()[0]);
-	else if (!member.is_in_chat(msg.get_params()[1]) || !is_exist_chat(msg.get_params()[1]))
-		send_error(member, 442, msg.get_params()[1]);
+int Server::cmdInv(const Message &msg, Client &member) {
+	if (msg.getParams().size() < 2)
+		errSend(member, 461, "INVITE");
+	else if (!verifyExistUsers(msg.getParams()[0]))
+		errSend(member, 401, msg.getParams()[0]);
+	else if (!member.verifyChat(msg.getParams()[1]) || !verifyExtChat(msg.getParams()[1]))
+		errSend(member, 442, msg.getParams()[1]);
 	else
-		invite_to_chat(member, msg.get_params()[0], msg.get_params()[1]);
-	return 0;
+		invChat(member, msg.getParams()[0], msg.getParams()[1]);
+	return (0);
 }
 
-int Server::kick_cmd(const Message &msg, Client &member) {
-	if (msg.get_params().size() < 2)
-		send_error(member, 461, "KICK");
-	else if (!is_exist_chat(msg.get_params()[0]))
-		send_error(member, 403, msg.get_params()[0]);
-	else if (!chats.at(msg.get_params()[0])->is_admin(member))
-		send_error(member, 482, msg.get_params()[0]);
-	else if (!chats.at(msg.get_params()[0])->is_exist_member(member.get_nick()))
-		send_error(member, 442, msg.get_params()[0]);
-	else if (!isExistMember(msg.get_params()[1]))
-		send_error(member, 401, msg.get_params()[1]);
-	else if (!chats.at(msg.get_params()[0])->is_exist_member(msg.get_params()[1]))
-		send_error(member, 441, msg.get_params()[1], msg.get_params()[0]);
+int Server::cmdKick(const Message &msg, Client &member) {
+	if (msg.getParams().size() < 2)
+		errSend(member, 461, "KICK");
+	else if (!verifyExtChat(msg.getParams()[0]))
+		errSend(member, 403, msg.getParams()[0]);
+	else if (!chats.at(msg.getParams()[0])->verifyAdmin(member))
+		errSend(member, 482, msg.getParams()[0]);
+	else if (!chats.at(msg.getParams()[0])->verifyUsers(member.getNick()))
+		errSend(member, 442, msg.getParams()[0]);
+	else if (!verifyExistUsers(msg.getParams()[1]))
+		errSend(member, 401, msg.getParams()[1]);
+	else if (!chats.at(msg.getParams()[0])->verifyUsers(msg.getParams()[1]))
+		errSend(member, 441, msg.getParams()[1], msg.getParams()[0]);
 	else {
-		Chat *chat = chats.at(msg.get_params()[0]);
-		std::string	message = "KICK " + chat->get_name() + " " + msg.get_params()[1] + " :";
-		if (msg.get_params().size() > 2)
-			message += msg.get_params()[2];
+		Chat *chat = chats.at(msg.getParams()[0]);
+		std::string	message = "KICK " + chat->getChatName() + " " + msg.getParams()[1] + " :";
+		if (msg.getParams().size() > 2)
+			message += msg.getParams()[2];
 		else
-			message += member.get_nick();
-		chat->send_message(message + "\n", member);
-		chat->disconnect(*(get_member(msg.get_params()[1])));
-		get_member(msg.get_params()[1])->delete_chat(msg.get_params()[0]);
+			message += member.getNick();
+		chat->sendMess(message + "\n", member);
+		chat->disconnect(*(getMembers(msg.getParams()[1])));
+		getMembers(msg.getParams()[1])->delChat(msg.getParams()[0]);
 	}
-	return 0;
+	return (0);
 }
 
-int Server::part_cmd(const Message &msg, Client &member) {
-	if (msg.get_params().size() < 1)
-		send_error(member, 461, "PART");
+int Server::cmdPart(const Message &msg, Client &member) {
+	if (msg.getParams().size() < 1)
+		errSend(member, 461, "PART");
 	else {
-		std::queue<std::string>	chat_queue = fill(msg.get_params()[0], ',');
+		std::queue<std::string>	chat_queue = qFiller(msg.getParams()[0], ',');
 		while (chat_queue.size() > 0) {
-			if (!is_exist_chat(chat_queue.front()))
-				send_error(member, 403, chat_queue.front());
-			else if (!member.is_in_chat(chat_queue.front()))
-				send_error(member, 442, chat_queue.front());
+			if (!verifyExtChat(chat_queue.front()))
+				errSend(member, 403, chat_queue.front());
+			else if (!member.verifyChat(chat_queue.front()))
+				errSend(member, 442, chat_queue.front());
 			else {
-				chats.at(chat_queue.front())->send_message("PART " + chat_queue.front() + "\n", member);
+				chats.at(chat_queue.front())->sendMess("PART " + chat_queue.front() + "\n", member);
 				chats.at(chat_queue.front())->disconnect(member);
-				member.delete_chat(chat_queue.front());
+				member.delChat(chat_queue.front());
 			}
 			chat_queue.pop();
 		}
 	}
-	return 0;
+	return (0);
 }
 
-//check
-int Server::list_cmd(const Message &msg, Client &member) {
-	if (msg.get_params().size() > 1 && msg.get_params()[1] != SERVER_NAME)
-		return (send_error(member, 402, msg.get_params()[1]));
+int Server::cmdList(const Message &msg, Client &member) {
+	if (msg.getParams().size() > 1 && msg.getParams()[1] != IRC_SERV)
+		return (errSend(member, 402, msg.getParams()[1]));
 	std::queue<std::string>	chans;
 	std::vector<std::string>	chansToDisplay;
-	if (msg.get_params().size() > 0)
+	if (msg.getParams().size() > 0)
 	{
-		for (chans = fill(msg.get_params()[0], ','); chans.size() > 0; ) {
-			if (is_exist_chat(chans.front()))
+		for (chans = qFiller(msg.getParams()[0], ','); chans.size() > 0; ) {
+			if (verifyExtChat(chans.front()))
 				chansToDisplay.push_back(chans.front());
 			chans.pop();
 		}
@@ -252,11 +252,11 @@ int Server::list_cmd(const Message &msg, Client &member) {
 		for (std::map<std::string, Chat*>::const_iterator it = chats.begin(); it != chats.end(); ++it)
 			chansToDisplay.push_back((*it).first);
 	}
-	send_reply(SERVER_NAME, member, 321);
+	rplSend(IRC_SERV, member, 321);
 	for (size_t i = 0; i < chansToDisplay.size(); ++i)
-		chats.at(chansToDisplay[i])->member_chat_info(member);
-	send_reply(SERVER_NAME, member, 323);
-	return 0;
+		chats.at(chansToDisplay[i])->chatInfoUsers(member);
+	rplSend(IRC_SERV, member, 323);
+	return (0);
 }
 
 void Server::sigProcess(int sig_code)
@@ -265,129 +265,104 @@ void Server::sigProcess(int sig_code)
 	boolWork = false;
 }
 
-bool Server::isExistMember(const std::string &nick) const
+bool Server::verifyExistUsers(const std::string &string) const
 {
 	size_t	usersCount = m_users.size();
 	for (size_t i = 0; i < usersCount; i++)
 	{
-		if (m_users[i]->get_nick() == nick)
+		if (m_users[i]->getNick() == string)
 			return (true);
 	}
 	return (false);
 }
 
-void Server::notify(Client &member, const std::string &msg)
+void Server::notification(Client &client, const std::string &string)
 {
-	const std::vector<const Chat *> chans = member.get_chats();
+	const std::vector<const Chat *> chans = client.getChats();
 	for (size_t i = 0; i < m_users.size(); i++)
 	{
 		for (size_t j = 0; j < chans.size(); j++)
 		{
-			if (chans[j]->is_exist_member(m_users[i]->get_nick()))
+			if (chans[j]->verifyUsers(m_users[i]->getNick()))
 			{
-				m_users[i]->send_message(msg);
+				m_users[i]->sendMessage(string);
 				break ;
 			}
 		}
 	}
 }
 
-int Server::connect_member(Client &member)
+int Server::usersConnection(Client &cl)
 {
-	if (member.get_nick().size() > 0 && member.get_username().size() > 0)
+	if (cl.getNick().size() > 0 && cl.getUsername().size() > 0)
 	{
-		if (m_pass.size() == 0 || member.get_password() == m_pass)
+		if (m_pass.size() == 0 || cl.getPassword() == m_pass)
 		{
-			if (!(member.get_flags() & REGISTERED))
+			if (!(cl.getFlags() & REGISTERED))
 			{
-				member.set_flag(REGISTERED);
-				send_motd(member);
+				cl.setFlag(REGISTERED);
+				putMotd(cl);
 			}
 		}
 		else
-			return -1;
+			return (-1);
 	}
-	return 0;
+	return (0);
 }
 
-void Server::send_motd(const Client &member) const
+void Server::putMotd(const Client &member) const
 {
 	if (motd.size() == 0)
-		send_error(member, 422);
+		errSend(member, 422);
 	else
 	{
-		send_reply(SERVER_NAME, member, 375, SERVER_NAME);
+		rplSend(IRC_SERV, member, 375, IRC_SERV);
 		for (size_t i = 0; i < motd.size(); ++i)
-			send_reply(SERVER_NAME, member, 372, motd[i]);
-		send_reply(SERVER_NAME, member, 376);
+			rplSend(IRC_SERV, member, 372, motd[i]);
+		rplSend(IRC_SERV, member, 376);
 	}
 }
 
-std::queue<std::string>	Server::fill(const std::string &str, char sep)
+std::queue<std::string>	Server::qFiller(const std::string &string, char sep)
 {
 	std::queue<std::string>	ret;
-	std::string::const_iterator	i = str.begin();
-	while(i != str.end())
+	std::string::const_iterator	i = string.begin();
+	while(i != string.end())
 	{
-		while (i != str.end() && *i == sep)
+		while (i != string.end() && *i == sep)
 			++i;
-		std::string::const_iterator	j = std::find(i, str.end(), sep);
-		if (i != str.end())
+		std::string::const_iterator	j = std::find(i, string.end(), sep);
+		if (i != string.end())
 		{
 			ret.push(std::string(i, j));
 			i = j;
 		}
 	}
-	return ret;
+	return (ret);
 }
 
-bool Server::is_exist_chat(const std::string &name) const
+bool Server::verifyExtChat(const std::string &name) const
 {
 	try {
 		chats.at(name);
-		return true;
+		return (true);
 	}
 	catch(const std::exception& e)
 	{}
-	return false;
+	return (false);
 }
 
-Client* Server::get_member(const std::string &nick)
+Client* Server::getMembers(const std::string &nick)
 {
 	Client	*ret;
 
 	for (size_t i = 0; i < m_users.size(); i++)
-		if (m_users[i]->get_nick() == nick)
+		if (m_users[i]->getNick() == nick)
 			ret = m_users[i];
 	return ret;
 }
 
-int Server::handle_flags(const Message &msg, Client &member)
-{
-	std::string	flag = msg.get_params()[1];
-
-	if (flag == "+i")
-		member.set_flag(INVISIBLE);
-	else if (flag == "-i")
-		member.delete_flag(INVISIBLE);
-	else if (flag == "+s")
-		member.set_flag(RECEIVENOTICE);
-	else if (flag == "-s")
-		member.delete_flag(RECEIVENOTICE);
-	else if (flag == "+w")
-		member.set_flag(RECEIVEWALLOPS);
-	else if (flag == "-w")
-		member.delete_flag(RECEIVEWALLOPS);
-	else if (flag == "+o")
-	{}
-	else if (flag == "-o")
-		member.delete_flag(IRCOPERATOR);
-	else
-		return send_error(member, 501);
-	return 0;
-}
-
-bool Server::is_correct_chat(const std::string &name)
+bool Server::verifyCorrectionChat(const std::string &name)
 {
 	if (name[0] != '#' && name[0] != '&')
 		return (false);
@@ -400,66 +375,66 @@ bool Server::is_correct_chat(const std::string &name)
 	return (true);
 }
 
-int Server::connect_to_chat(const Client& member, const std::string& name, const std::string& password)
+int Server::chatConnectionUs(const Client& users, const std::string& name, const std::string& password)
 {
 	try
 	{
 		Chat *tmp = chats.at(name);
-		tmp->connect(member, password);
+		tmp->connection(users, password);
 		return (1);
 	}
 	catch(const std::exception& e)
 	{
-		chats[name] = new Chat(name, member, password);
+		chats[name] = new Chat(name, users, password);
 	}
 	return (1);
 }
 
-void Server::invite_to_chat(const Client &member, const std::string &nick, const std::string &chat_name)
+void Server::invChat(const Client &user, const std::string &nick, const std::string &chat_name)
 {
 	Client	*receiver;
 	for (size_t i = 0; i < m_users.size(); ++i)
-		if (m_users[i]->get_nick() == nick)
+		if (m_users[i]->getNick() == nick)
 			receiver = m_users[i];
 	Chat *chat = chats.at(chat_name);
-	if (chat->is_exist_member(nick))
-		send_error(member, 443, nick, chat_name);
+	if (chat->verifyUsers(nick))
+		errSend(user, 443, nick, chat_name);
 	else
-		chat->invite(member, *receiver);
+		chat->invUsers(user, *receiver);
 }
 
-int Server::ping_cmd(const Message &msg, Client &member)
+int Server::cmdPing(const Message &msg, Client &member)
 {
-	std::string name = SERVER_NAME;
-	if (msg.get_params().size() == 0)
-		return (send_error(member, 409));
-	member.send_message(":" + name + " PONG :" + msg.get_params()[0] + "\n");
+	std::string name = IRC_SERV;
+	if (msg.getParams().size() == 0)
+		return (errSend(member, 409));
+	member.sendMessage(":" + name + " PONG :" + msg.getParams()[0] + "\n");
 	return 0;
 }
 
-int Server::pong_cmd(const Message &msg, Client &member)
+int Server::cmdPong(const Message &msg, Client &member)
 {
-	if (msg.get_params().size() <= 0 || msg.get_params()[0] != SERVER_NAME)
-		return (send_error(member, 402, msg.get_params().size() > 0 ? msg.get_params()[0] : ""));
-	member.delete_flag(PINGING);
+	if (msg.getParams().size() <= 0 || msg.getParams()[0] != IRC_SERV)
+		return (errSend(member, 402, msg.getParams().size() > 0 ? msg.getParams()[0] : ""));
+	member.deleteFlag(PINGING);
 	return 0;
 }
 
-void Server::init_cmds()
+void Server::allIRCCommands()
 {
-	m_mapCmd["PASS"] = &Server::pass_cmd;
-	m_mapCmd["NICK"] = &Server::nick_cmd;
-	m_mapCmd["USER"] = &Server::user_cmd;
-	m_mapCmd["QUIT"] = &Server::quit_cmd;
-	m_mapCmd["PRIVMSG"] = &Server::privmsg_cmd;
-	m_mapCmd["NOTICE"] = &Server::notice_cmd;
-	m_mapCmd["JOIN"] = &Server::join_cmd;
-	m_mapCmd["INVITE"] = &Server::invite_cmd;
-	m_mapCmd["KICK"] = &Server::kick_cmd;
-	m_mapCmd["PART"] = &Server::part_cmd;
-	m_mapCmd["LIST"] = &Server::list_cmd;
-	m_mapCmd["PING"] = &Server::ping_cmd;
-	m_mapCmd["PONG"] = &Server::pong_cmd;
+	m_mapCmd["PASS"] = &Server::cmdPassword;
+	m_mapCmd["NICK"] = &Server::cmdNickName;
+	m_mapCmd["USER"] = &Server::cmdUser;
+	m_mapCmd["QUIT"] = &Server::cmdQuit;
+	m_mapCmd["PRIVMSG"] = &Server::cmdPrivMessage;
+	m_mapCmd["NOTICE"] = &Server::cmdNotice;
+	m_mapCmd["JOIN"] = &Server::cmdJoin;
+	m_mapCmd["INVITE"] = &Server::cmdInv;
+	m_mapCmd["KICK"] = &Server::cmdKick;
+	m_mapCmd["PART"] = &Server::cmdPart;
+	m_mapCmd["LIST"] = &Server::cmdList;
+	m_mapCmd["PING"] = &Server::cmdPing;
+	m_mapCmd["PONG"] = &Server::cmdPong;
 }
 
 void Server::go() {
@@ -482,7 +457,7 @@ void Server::go() {
 		exit(1);
 	}
 
-	if (listen(m_socket_fd, BACK_LOG) == -1) {
+	if (listen(m_socket_fd, 10) == -1) {
 		std::cerr << "Error: listen failed!" << std::endl;
 		exit(1);
 	}
@@ -490,47 +465,46 @@ void Server::go() {
 
 	while(boolWork) {
 		if ((m_client_fd = accept(m_socket_fd, reinterpret_cast<struct sockaddr*>(&m_addr), &m_addrLen)) >= 0) {
-			host_ip = inet_ntoa(m_addr.sin_addr);
 			struct pollfd poll_fd;
 			poll_fd.fd = m_client_fd;
 			poll_fd.events = POLLIN;
 			poll_fd.revents = 0;
 			m_clientFds.push_back(poll_fd);
-			m_users.push_back(new Client(m_client_fd, SERVER_NAME));
+			m_users.push_back(new Client(m_client_fd, IRC_SERV));
 		}
 
 		int res = poll(m_clientFds.data(), m_clientFds.size(), m_timeout);
 		if (res != 0) {
 			for (size_t i = 0; i < m_clientFds.size(); ++i) {
 				if (m_clientFds[i].revents & POLLIN) {
-					if ((m_users[i]->read_message() == -1) || (handle_mes(*(m_users[i])) == -1))
-						m_users[i]->set_flag(BREAKCONNECTION);
+					if ((m_users[i]->readMes() == -1) || (handleMes(*(m_users[i])) == -1))
+						m_users[i]->setFlag(BREAKCONNECTION);
 				}
 				m_clientFds[i].revents = 0;
 			}
 		}
 
-		std::string name = SERVER_NAME;
+		std::string name = IRC_SERV;
 		for (size_t i = 0; i < m_users.size(); i++) {
-			if (this->m_users[i]->get_flags() & REGISTERED) {
-				if (time(0) - this->m_users[i]->get_time_last_mes() > static_cast<time_t>(120)) {
-					this->m_users[i]->send_message(":" + name + " PING :" + SERVER_NAME + "\n");
-					this->m_users[i]->update_time_ping();
-					this->m_users[i]->update_time_last_mes();
-					this->m_users[i]->set_flag(PINGING);
+			if (this->m_users[i]->getFlags() & REGISTERED) {
+				if (time(0) - this->m_users[i]->getTimeLastMes() > static_cast<time_t>(120)) {
+					this->m_users[i]->sendMessage(":" + name + " PING :" + IRC_SERV + "\n");
+					this->m_users[i]->updateTimePing();
+					this->m_users[i]->updateTimeLastMes();
+					this->m_users[i]->setFlag(PINGING);
 				}
-				if ((m_users[i]->get_flags() & PINGING) && time(0) - m_users[i]->get_time_ping() > static_cast<time_t>(60))
-					m_users[i]->set_flag(BREAKCONNECTION);
+				if ((m_users[i]->getFlags() & PINGING) && time(0) - m_users[i]->getTimePing() > static_cast<time_t>(60))
+					m_users[i]->setFlag(BREAKCONNECTION);
 			}
 		}
 
 		for (size_t i = 0; i < m_users.size(); ++i) {
-			if (m_users[i]->get_flags() & BREAKCONNECTION) {
-				m_history.add_user(*(m_users[i]));
-				notify(*(m_users[i]), ": " + m_users[i]->get_prefix() + "QUIT :" + m_users[i]->get_exit_msg() + "\n");
-				close(m_users[i]->get_socket());
+			if (m_users[i]->getFlags() & BREAKCONNECTION) {
+				m_history.addUser(*(m_users[i]));
+				notification(*(m_users[i]), ": " + m_users[i]->getPrefix() + "QUIT :" + m_users[i]->getExitMsg() + "\n");
+				close(m_users[i]->getSocket());
 				for (std::map<std::string, Chat *>::iterator it = chats.begin(); it != chats.end(); ++it)
-					if (it->second->is_exist_member(m_users[i]->get_nick()))
+					if (it->second->verifyUsers(m_users[i]->getNick()))
 						it->second->disconnect(*(m_users[i]));
 				delete m_users[i];
 				m_users.erase(m_users.begin() + i);
@@ -540,7 +514,7 @@ void Server::go() {
 		}
 
 		for (std::map<std::string, Chat *>::const_iterator it = chats.begin(); it != chats.end(); ) {
-			if (it->second->is_empty()) {
+			if (it->second->isEmpty()) {
 				delete it->second;
 				chats.erase((*it).first);
 				it = chats.begin();

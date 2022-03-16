@@ -1,110 +1,107 @@
 #include "../includes/Client.hpp"
 
-Client::Client(int Socket_fd, const std::string &Host_ip): socket_fd(Socket_fd), host_ip(Host_ip),
-														   registration_time(time(NULL)), flags(RECEIVENOTICE)
-{
+Client::Client(int socket_fd, const std::string &ip) :
+		socketFd(socket_fd),
+		hostIp(ip),
+		registrationTime(time(NULL)),
+		flags(RECEIVENOTICE) { }
 
+Client::~Client() { }
+
+const int& Client::getSocket() const
+{
+	return (socketFd);
 }
 
-Client::~Client()
+const std::string& Client::getUsername() const
 {
-
+	return (m_userName);
 }
 
-const int& Client::get_socket() const
+const std::string& Client::getIpHost() const
 {
-	return socket_fd;
+	return (hostIp);
 }
 
-const std::string& Client::get_username() const
+const std::string& Client::getNick() const
 {
-	return username;
+	return (m_nick);
 }
 
-const std::string& Client::get_host() const
+const std::string& Client::getPassword() const
 {
-	return host_ip;
+	return (m_pa);
 }
 
-const std::string& Client::get_nick() const
+const time_t& Client::getTimeLastMes() const
 {
-	return nick;
+	return (timeLastMes);
 }
 
-const std::string& Client::get_password() const
+const time_t& Client::getTimePing() const
 {
-	return password;
+	return (pingTiming);
 }
 
-const time_t& Client::get_registration_time() const
+const std::queue<std::string> &Client::getMessages() const
 {
-	return registration_time;
+	return (qmes);
 }
 
-const time_t& Client::get_time_last_mes() const
+const unsigned char &Client::getFlags() const
 {
-	return time_last_mes;
+	return (flags);
 }
 
-const time_t& Client::get_time_ping() const
+const std::string &Client::getExitMsg() const
 {
-	return time_ping;
+	return (exitMsg);
 }
 
-const std::queue<std::string>& Client::get_messages() const
+const time_t &Client::getRegistrationTime() const
 {
-	return messages;
+	return (registrationTime);
 }
 
-const unsigned char& Client::get_flags() const
+const std::vector<const Chat*>& Client::getChats() const
 {
-	return flags;
+	return (vecChats);
 }
 
-const std::string& Client::get_exit_msg() const
+void Client::setUsername(const std::string &string)
 {
-	return exit_msg;
+	m_userName = string;
 }
 
-const std::vector<const Chat*>& Client::get_chats() const
+void Client::setNick(const std::string &string)
 {
-	return chats;
+	m_nick = string;
 }
 
-void Client::set_username(const std::string &Username)
+void Client::setPassword(const std::string &string)
 {
-	username = Username;
+	m_pa = string;
 }
 
-void Client::set_nick(const std::string &Nick)
+void Client::setExitMsg(const std::string &string)
 {
-	nick = Nick;
+	exitMsg = string;
 }
 
-void Client::set_password(const std::string &Password)
-{
-	password = Password;
-}
-
-void Client::set_exit_msg(const std::string &Message)
-{
-	exit_msg = Message;
-}
-
-void Client::set_flag(const unsigned char &flag)
+void Client::setFlag(const unsigned char &flag)
 {
 	flags |= flag;
-	if (flag == BREAKCONNECTION && exit_msg.size() == 0)
-		exit_msg = "Client exited";
+	if (flag == BREAKCONNECTION && exitMsg.size() == 0)
+		exitMsg = "сlient exited";
 }
 
-void Client::send_message(const std::string &message) const
+void Client::sendMessage(const std::string &string) const
 {
-	if (message.size() > 0)
-		send(socket_fd, message.c_str(), message.size(), SO_NOSIGPIPE);
+	if (string.size() > 0)
+		send(socketFd, string.c_str(), string.size(), SO_NOSIGPIPE);
 }
 
-void Client::fill_messages(const std::string &str)
+void Client::messagesFilling(const std::string &str)
 {
 	typedef std::string::const_iterator const_iterator;
 	for (const_iterator it = str.begin(); it != str.end(); ++it)
@@ -114,92 +111,87 @@ void Client::fill_messages(const std::string &str)
 		const_iterator separator = std::find(it, str.end(), '\n');
 		if (it != str.end())
 		{
-			messages.push(std::string(it, separator + 1));
+			qmes.push(std::string(it, separator + 1));
 			it = separator;
 		}
 	}
 }
 
-int Client::read_message()
+int Client::readMes()
 {
 	std::string text;
 
-	if (messages.size() > 0)
-		text = messages.front();
-	while((recv_bytes = recv(socket_fd, buf, BUFF_SIZE - 1, 0)) > 0)
+	if (qmes.size() > 0)
+		text = qmes.front();
+	while((m_recvB = recv(socketFd, m_buff, 201, 0)) > 0)
 	{
-		buf[recv_bytes] = '\0';
-		text += buf;
-		buf[0] = 0;
+		m_buff[m_recvB] = '\0';
+		text += m_buff;
+		m_buff[0] = 0;
 		if (text.find('\n') != std::string::npos)
 			break;
 	}
-	if (text.length() > TEXT_LEN)
-		text = text.substr(0, TEXT_LEN - 2) + "\r\n";
-	if (recv_bytes == 0)
+	if (text.length() > 512)
+		text = text.substr(0, 512 - 2) + "\r\n";
+	if (m_recvB == 0)
 		return (-1);
 	while (text.find("\r\n") != std::string::npos)
 		text.replace(text.find("\r\n"), 2, "\n");
 	if (text.size() > 1)
-		fill_messages(text);
+		messagesFilling(text);
 	return 0;
 }
 
-void Client::set_realname(const std::string &Realname)
+void Client::setRealName(const std::string &string)
 {
-	real_name = Realname;
+	realName = string;
 }
 
-const std::string& Client::get_realname() const
+std::string Client::getPrefix() const
 {
-	return real_name;
+	return std::string(m_nick + "!" + m_userName + "@" + realName);
 }
 
-std::string Client::get_prefix() const
+void Client::deleteMes()
 {
-	return std::string(nick + "!" + username + "@" + real_name);
+	if (qmes.size() > 0)
+		qmes.pop();
 }
 
-void Client::delete_message()
-{
-	if (messages.size() > 0)
-		messages.pop();
-}
-
-void Client::delete_flag(unsigned char flag)
+void Client::deleteFlag(unsigned char flag)
 {
 	flags &= ~flag;
 }
 
-void Client::update_time_last_mes()
+void Client::updateTimeLastMes()
 {
-	time_last_mes = time(0);
+	timeLastMes = time(0);
 }
 
-void Client::update_time_ping()
+void Client::updateTimePing()
 {
-	time_ping = time(0);
+	pingTiming = time(0);
 }
 
-void Client::add_chat(const Chat &chat)
+void Client::addChat(const Chat &chat)
 {
-	chats.push_back(&chat);
+	vecChats.push_back(&chat);
 }
 
-bool Client::is_in_chat(const std::string &chat) const
+bool Client::verifyChat(const std::string &chat) const
 {
-	for (size_t i = 0; i < chats.size(); i++)
-		if (chats[i]->get_name() == chat)
+	for (size_t i = 0; i < vecChats.size(); i++)
+		if (vecChats[i]->getChatName() == chat)
 			return true;
 	return false;
 }
 
-void	Client::delete_chat(const std::string &chat)
+void	Client::delChat(const std::string &chat)
 {
-	iterator begin = chats.begin();
-	iterator end = chats.end();
+	iterator begin = vecChats.begin();
+	iterator end = vecChats.end();
 	for (; begin != end; ++begin)
-		if ((*begin)->get_name() == chat)
+		if ((*begin)->getChatName() == chat)
 			break ;
-	chats.erase(begin);
+	vecChats.erase(begin);
 }

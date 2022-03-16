@@ -55,7 +55,7 @@ void Bot::botGO() {
 		exit(1);
 	}
 	if (connect(m_socketBot, reinterpret_cast<struct sockaddr*>(&addr), addrLen) < 0) {
-		std::cerr << "Error: connect error!" << std::endl;
+		std::cerr << "Error: connection error!" << std::endl;
 		exit(1);
 	}
 	fcntl(m_socketBot, F_SETFL, O_NONBLOCK);
@@ -74,9 +74,9 @@ void Bot::botGO() {
 
 	signal(SIGINT, sigHandler);
 	while(work) {
-		memset(m_recvBuf, 0, BUFF_SIZE);
+		memset(m_recvBuf, 0, 1024);
 		m_request = "";
-		while ((m_recvBytes = recv(m_socketBot, m_recvBuf, BUFF_SIZE - 1, 0)) > 0)
+		while ((m_recvBytes = recv(m_socketBot, m_recvBuf, 1024 - 1, 0)) > 0)
 		{
 			m_recvBuf[m_recvBytes] = '\0';
 			m_request += m_recvBuf;
