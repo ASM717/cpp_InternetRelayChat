@@ -108,9 +108,8 @@ void Client::messagesFilling(const std::string &str)
 	{
 		for (; it != str.end() && *it == '\n'; ++it)
 			;
-		const_iterator separator = std::find(it, str.end(), '\n');
-		if (it != str.end())
-		{
+		if (it != str.end()) {
+			const_iterator separator = std::find(it, str.end(), '\n');
 			qmes.push(std::string(it, separator + 1));
 			it = separator;
 		}
